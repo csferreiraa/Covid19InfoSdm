@@ -1,12 +1,16 @@
 package br.edu.ifsp.scl.sdm.covid19infosdm
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import br.edu.ifsp.scl.sdm.covid19infosdm.model.dataclass.*
+import br.edu.ifsp.scl.sdm.covid19infosdm.model.dataclass.ByCountryResponseList
+import br.edu.ifsp.scl.sdm.covid19infosdm.model.dataclass.ByCountryResponseListItem
+import br.edu.ifsp.scl.sdm.covid19infosdm.model.dataclass.DayOneResponseList
+import br.edu.ifsp.scl.sdm.covid19infosdm.model.dataclass.DayOneResponseListItem
 import br.edu.ifsp.scl.sdm.covid19infosdm.viewmodel.Covid19ViewModel
 import com.jjoe64.graphview.helper.DateAsXAxisLabelFormatter
 import com.jjoe64.graphview.series.DataPoint
@@ -22,15 +26,15 @@ class MainActivity : AppCompatActivity() {
 
     /* Classe para os serviços que serão acessados */
     private enum class Information(val type: String){
-        DAY_ONE("Day one"),
-        BY_COUNTRY("By country")
+        DAY_ONE("Dia 1"),
+        BY_COUNTRY("Por país")
     }
 
     /* Classe para o status que será buscado no serviço */
     private enum class Status(val type: String){
-        CONFIRMED("Confirmed"),
-        RECOVERED("Recovered"),
-        DEATHS("Deaths")
+        CONFIRMED("Confirmados"),
+        RECOVERED("Curados"),
+        DEATHS("Mortes")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,10 +51,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun onRetrieveClick(view: View) {
-        when (infoSp.selectedItem.toString()) {
-            Information.DAY_ONE.type -> { fetchDayOne() }
-            Information.BY_COUNTRY.type -> { fetchByCountry() }
+        if(countrySp.selectedItem != null){
+            when (infoSp.selectedItem.toString()) {
+                Information.DAY_ONE.type -> { fetchDayOne() }
+                Information.BY_COUNTRY.type -> { fetchByCountry() }
+            }
+        }else{
+            Toast.makeText(this, "Selecione um país", Toast.LENGTH_LONG).show()
         }
+
     }
 
     private fun countryAdapterInit() {
@@ -104,47 +113,62 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchDayOne() {
         val countrySlug = countryNameSlugMap[countrySp.selectedItem.toString()]!!
+        getDayOne(countrySlug)
+    }
 
+    private fun getDayOne(countrySlug: String) {
         viewModel.fetchDayOne(countrySlug, statusSp.selectedItem.toString()).observe(
             this,
             Observer { casesList ->
-                if (viewModeTextRb.isChecked) {
-                    /* Modo texto */
-                    modoGrafico(ligado = false)
-                    resultTv.text = casesListToString(casesList)
-                }
-                else {
-                    /* Modo gráfico */
-                    modoGrafico(ligado = true)
-                    resultGv.removeAllSeries()
-                    resultGv.gridLabelRenderer.resetStyles()
 
-                    /* Preparando pontos */
-                    val pointsArrayList = arrayListOf<DataPoint>()
-                    casesList.forEach {
-                        val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(it.date.substring(0,10))
-                        val point = DataPoint(date, it.cases.toDouble())
-                        pointsArrayList.add(point)
+                    try {
+
+                        if (viewModeTextRb.isChecked) {
+                            /* Modo texto */
+                            modoGrafico(ligado = false)
+                            resultTv.text = casesListToString(casesList)
+                        } else {
+                            /* Modo gráfico */
+                            modoGrafico(ligado = true)
+                            resultGv.removeAllSeries()
+                            resultGv.gridLabelRenderer.resetStyles()
+
+                            /* Preparando pontos */
+                            val pointsArrayList = arrayListOf<DataPoint>()
+                            casesList.forEach {
+                                val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(
+                                    it.date.substring(
+                                        0,
+                                        10
+                                    )
+                                )
+                                val point = DataPoint(date, it.cases.toDouble())
+                                pointsArrayList.add(point)
+                            }
+                            val pointsSeries = LineGraphSeries(pointsArrayList.toTypedArray())
+                            resultGv.addSeries(pointsSeries)
+
+                            /* Formatando gráfico */
+                            resultGv.gridLabelRenderer.setHumanRounding(false)
+                            resultGv.gridLabelRenderer.labelFormatter =
+                                DateAsXAxisLabelFormatter(this)
+
+                            resultGv.gridLabelRenderer.numHorizontalLabels = 4
+                            val primeiraData = Date(pointsArrayList.first().x.toLong())
+                            val ultimaData = Date(pointsArrayList.last().x.toLong())
+                            resultGv.viewport.setMinX(primeiraData.time.toDouble())
+                            resultGv.viewport.setMaxX(ultimaData.time.toDouble())
+                            resultGv.viewport.isXAxisBoundsManual = true
+
+                            resultGv.gridLabelRenderer.numVerticalLabels = 4
+                            resultGv.viewport.setMinY(pointsArrayList.first().y)
+                            resultGv.viewport.setMaxY(pointsArrayList.last().y)
+                            resultGv.viewport.isYAxisBoundsManual = true
+                        }
+                    }catch (e : Exception){
+                        Toast.makeText(this,
+                            "Houve um erro, tente novamente", Toast.LENGTH_LONG).show()
                     }
-                    val pointsSeries = LineGraphSeries(pointsArrayList.toTypedArray())
-                    resultGv.addSeries(pointsSeries)
-
-                    /* Formatando gráfico */
-                    resultGv.gridLabelRenderer.setHumanRounding(false)
-                    resultGv.gridLabelRenderer.labelFormatter = DateAsXAxisLabelFormatter(this)
-
-                    resultGv.gridLabelRenderer.numHorizontalLabels = 4
-                    val primeiraData = Date(pointsArrayList.first().x.toLong())
-                    val ultimaData = Date(pointsArrayList.last().x.toLong())
-                    resultGv.viewport.setMinX(primeiraData.time.toDouble())
-                    resultGv.viewport.setMaxX(ultimaData.time.toDouble())
-                    resultGv.viewport.isXAxisBoundsManual = true
-
-                    resultGv.gridLabelRenderer.numVerticalLabels = 4
-                    resultGv.viewport.setMinY(pointsArrayList.first().y)
-                    resultGv.viewport.setMaxY(pointsArrayList.last().y)
-                    resultGv.viewport.isYAxisBoundsManual = true
-                }
             }
         )
     }
@@ -156,7 +180,12 @@ class MainActivity : AppCompatActivity() {
         viewModel.fetchByCountry(countrySlug, statusSp.selectedItem.toString()).observe(
             this,
             Observer { casesList ->
-                resultTv.text = casesListToString(casesList)
+                try {
+                    resultTv.text = casesListToString(casesList)
+                }catch (e : Exception){
+                    Toast.makeText(this,
+                        "Houve um erro, tente novamente", Toast.LENGTH_LONG).show()
+                }
             }
         )
     }
@@ -175,13 +204,15 @@ class MainActivity : AppCompatActivity() {
     private inline fun <reified  T: ArrayList<*>> casesListToString(responseList: T): String {
         val resultSb = StringBuffer()
 
+
+
         // Usando class.java para não ter que adicionar biblioteca de reflexão Kotlin
         responseList.forEach {
             when(T::class.java) {
                 DayOneResponseList::class.java -> {
                     with (it as DayOneResponseListItem) {
                         resultSb.append("Casos: ${this.cases}\n")
-                        resultSb.append("Data: ${this.date.substring(0,10)}\n\n")
+                        resultSb.append("Data: ${formatDate(this.date)}\n\n")
                     }
                 }
                 ByCountryResponseList::class.java -> {
@@ -194,12 +225,20 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         resultSb.append("Casos: ${this.cases}\n")
-                        resultSb.append("Data: ${this.date.substring(0,10)}\n\n")
+
+                        resultSb.append("Data: ${formatDate(this.date)}\n\n")
                     }
                 }
             }
         }
 
         return resultSb.toString()
+    }
+
+    private fun formatDate(date : String) : String{
+        val formatter : SimpleDateFormat = SimpleDateFormat("yyyy-MM-dd");
+        val date : Date = formatter.parse(date);
+        formatter.applyPattern("dd/MM/yyyy");
+        return formatter.format(date);
     }
 }

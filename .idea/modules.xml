@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/Covid19InfoSdm.iml" filepath="$PROJECT_DIR$/.idea/Covid19InfoSdm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Covid_19_Info_Sdm_-_Cleiton_Ferreira.iml" filepath="$PROJECT_DIR$/.idea/modules/Covid_19_Info_Sdm_-_Cleiton_Ferreira.iml" group="Covid_19_Info_Sdm_-_Cleiton_Ferreira" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/app.iml" group="Covid 19 Info Sdm - Cleiton Ferreira/app" />
     </modules>
   </component>
 </project>
